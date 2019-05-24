@@ -2,7 +2,8 @@ program ExpressionTest;
 
 uses
   Forms,
-  Main in 'Main.pas' {MainForm};
+  Main in 'Main.pas' {MainForm},
+  ExprParser in '..\..\ExprParser.pas';
 
 {$R *.res}
 
