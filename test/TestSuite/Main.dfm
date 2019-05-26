@@ -1,7 +1,7 @@
 object MainForm: TMainForm
   Left = 0
   Top = 0
-  Caption = 'Testbench f'#252'r KiwiExprParser'
+  Caption = 'Testbench for ExprParser'
   ClientHeight = 389
   ClientWidth = 648
   Color = clBtnFace
@@ -21,25 +21,24 @@ object MainForm: TMainForm
   object Label1: TLabel
     Left = 16
     Top = 8
-    Width = 44
+    Width = 43
     Height = 13
-    Caption = 'Variablen'
+    Caption = 'Variables'
   end
   object Label2: TLabel
     Left = 16
     Top = 128
-    Width = 44
+    Width = 52
     Height = 13
-    Caption = 'Ausdruck'
+    Caption = 'Expression'
   end
   object Label3: TLabel
     Left = 16
     Top = 237
-    Width = 41
+    Width = 30
     Height = 13
     Anchors = [akLeft, akBottom]
-    Caption = 'Ergebnis'
-    ExplicitTop = 256
+    Caption = 'Result'
   end
   object Label4: TLabel
     Left = 272
@@ -85,6 +84,7 @@ object MainForm: TMainForm
     Height = 25
     Action = ExecuteAction
     Anchors = [akLeft, akBottom]
+    Caption = 'Execute (F9)'
     TabOrder = 3
   end
   object ExecNodeTreeMemo: TMemo
@@ -108,7 +108,7 @@ object MainForm: TMainForm
     Width = 137
     Height = 17
     Anchors = [akLeft, akBottom]
-    Caption = 'Kurzschlussauswertung'
+    Caption = 'Short-circuit evaluation'
     Checked = True
     State = cbChecked
     TabOrder = 5
