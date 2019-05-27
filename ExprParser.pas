@@ -45,14 +45,16 @@ This unit is used as a helper for JvMemoryDataSet.pas.
 
 }
 
-{.$I jvcl.inc}
-
 {DEFINE TESTING_PARSER}
 
 interface
 
 uses
-  SysUtils, Contnrs, Classes, Variants, Masks;
+  System.SysUtils,
+  System.Contnrs,
+  System.Classes,
+  System.Variants,
+  System.Masks;
 
 type
   // Forward classes
@@ -60,10 +62,10 @@ type
   TScan = class;
   TLex = class;
 
-  TOnGetVariableValue = function(Sender: TObject; const VarName: string;
-    var Value: Variant): Boolean of object;
-  TOnExecuteFunction = function(Sender: TObject; const FuncName: string;
-    const Args: Variant; var ResVal: Variant): Boolean of object;
+  TGetVariableEvent = reference to function(Sender: TObject; const VarName: string;
+    var Value: Variant): Boolean;
+  TExecuteFunctionEvent = reference to function(Sender: TObject; const FuncName: string;
+    const Args: Variant; var ResVal: Variant): Boolean;
 
   TExprParser = class
   private
@@ -71,8 +73,8 @@ type
     FParser: TParser;
     FScan: TScan;
     FExpression: string;
-    FOnGetVariable: TOnGetVariableValue;
-    FOnExecuteFunction: TOnExecuteFunction;
+    FOnGetVariable: TGetVariableEvent;
+    FOnExecuteFunction: TExecuteFunctionEvent;
     FEnableWildcardMatching: Boolean;
     FErrorMessage: string;
     FCaseInsensitive: Boolean;
@@ -99,8 +101,8 @@ type
     property CaseInsensitive: Boolean read FCaseInsensitive write SetCaseInsensitive;
     property FullBooleanEvaluation: Boolean read FFullBooleanEvaluation write FFullBooleanEvaluation;
 
-    property OnGetVariable: TOnGetVariableValue read FOnGetVariable write FOnGetVariable;
-    property OnExecuteFunction: TOnExecuteFunction read FOnExecuteFunction write FOnExecuteFunction;
+    property OnGetVariable: TGetVariableEvent read FOnGetVariable write FOnGetVariable;
+    property OnExecuteFunction: TExecuteFunctionEvent read FOnExecuteFunction write FOnExecuteFunction;
   end;
 
   EExprParserError = class(Exception);
@@ -124,7 +126,7 @@ type
     constructor Create(AToken: TToken; APos: Integer); overload;
     constructor Create(AToken: TToken; const AStr: string; APos: Integer); overload;
     constructor Create(AToken: TToken; AChr: Char; APos: Integer); overload;
-    function Debug(): string;
+    function Debug: string;
 
     property Token: TToken read FToken;
     property Chr: Char read FChr;
@@ -141,7 +143,7 @@ type
     property Items[Index: Integer]: TLex read GetItem; default;
     function Parse(const Str: string): Boolean;
     {$IFDEF TESTING_PARSER}
-    procedure DebugPrint();
+    procedure DebugPrint;
     {$ENDIF TESTING_PARSER}
     property ErrorMessage: string read FErrorMessage;
   end;
@@ -152,9 +154,7 @@ type
   public
     constructor Create(Parser: TParser); virtual;
 
-    // Delphi 5 compiler shows hints about a not exported or used symbol
-    // TNode.Eval. This is a compiler bug that is caused by the "abstract" keyword.
-    function Eval(): Variant; virtual; abstract;
+    function Eval: Variant; virtual; abstract;
   end;
 
   TNodeCValue = class(TNode)
@@ -162,7 +162,8 @@ type
     FCValue: TLex;
   public
     constructor Create(AParser: TParser; ACValue: TLex); reintroduce;
-    function Eval(): Variant; override;
+
+    function Eval: Variant; override;
 
     property ConstantValueLex: TLex read FCValue;
   end;
@@ -172,7 +173,7 @@ type
     FLex: TLex;
   public
     constructor Create(AParser: TParser; ALex: TLex); reintroduce;
-    function Eval(): Variant; override;
+    function Eval: Variant; override;
 
     property VariableLex: TLex read FLex;
   end;
@@ -184,7 +185,7 @@ type
   public
     constructor Create(AParser: TParser; AOperator: TLex; ARightNode: TNode); reintroduce;
     destructor Destroy; override;
-    function Eval(): Variant; override;
+    function Eval: Variant; override;
 
     property OperatorLex: TLex read FOperator;
     property RightNode: TNode read FRightNode;
@@ -197,7 +198,7 @@ type
   public
     constructor Create(AParser: TParser; AOperator: TLex; ALeftNode, ARightNode: TNode); reintroduce;
     destructor Destroy; override;
-    function Eval(): Variant; override;
+    function Eval: Variant; override;
 
     property OperatorLex: TLex read FOperator;
     property LeftNode: TNode read FLeftNode;
@@ -212,7 +213,7 @@ type
     constructor Create(AParser: TParser; AFunc: TLex); reintroduce;
     destructor Destroy; override;
     procedure AddArg(Node: TNode);
-    function Eval(): Variant; override;
+    function Eval: Variant; override;
 
     property FunctionLex: TLex read FFunc;
     property Arguments: TObjectList read FArgs;
@@ -229,16 +230,16 @@ type
   public
     destructor Destroy; override;
 
-    function Parse(): Boolean;
-    function Execute(): Boolean;
+    function Parse: Boolean;
+    function Execute: Boolean;
 
-    function Expr(): TNode;
-    function Term(): TNode;
-    function Factor(): TNode;
+    function Expr: TNode;
+    function Term: TNode;
+    function Factor: TNode;
 
-    function LexC(): TLex;
+    function LexC: TLex;
     function LexLook(LookAhead: Integer = 1): TLex;
-    procedure LexAccept();
+    procedure LexAccept;
 
     property Parent: TExprParser read FParent write FParent;
     property Value: Variant read FValue;
@@ -303,7 +304,7 @@ var
 
 function StrToFloat(const S: string): Extended;
 begin
-  Result := SysUtils.StrToFloat(S, ParseFormatSettings);
+  Result := System.SysUtils.StrToFloat(S, ParseFormatSettings);
 end;
 
 {$IFDEF TESTING_PARSER}
@@ -336,7 +337,7 @@ begin
   FPos := APos;
 end;
 
-function TLex.debug: string;
+function TLex.Debug: string;
 const
   TokenStr: array[TToken] of string =
     ('N/A', 'End of expression', 'Error',
@@ -358,8 +359,7 @@ end;
 
 constructor TScan.Create;
 begin
-  inherited Create;
-  OwnsObjects := True;
+  inherited Create(True);
   FErrorMessage := '';
 end;
 
@@ -370,10 +370,17 @@ end;
 
 function TScan.Parse(const Str: string): Boolean;
 var
-  Idx, StartIdx, Len: Integer;
+  Idx, StartIdx, TokenStartIdx, Len: Integer;
   C: Char;
-  S: string;
+  S, SLower: string;
   CToken: TToken;
+
+  procedure FetchNumbers;
+  begin
+    while (Idx <= Len) and (Str[Idx] in cNumbers) do
+      Inc(Idx);
+  end;
+
 begin
   Len := Length(Str);
   Idx := 1;
@@ -395,72 +402,71 @@ begin
     else
       if C in cOperators then
         CToken := tkOperator
-      else
-        if (C = '"') or (C = '''') then
+      else if (C = '"') or (C = '''') then
+      begin
+        CToken := tkString;
+        TokenStartIdx := Idx;
+        while (Idx <= Len) and (Str[Idx] <> C) do
+          Inc(Idx);
+
+        if (Idx <= Len) and (Str[Idx] = C) then
         begin
-          CToken := tkString;
-          while (Idx <= Len) and (Str[Idx] <> C) do
-          begin
-            S := S + Str[Idx]; // ahuser: performance suicide
-            Inc(Idx);
-          end;
-          if (Idx <= Len) and (Str[Idx] = C) then
-            Inc(Idx)
-          else
-          begin
-            CToken := tkError;
-            FErrorMessage := 'No end of string found';
-          end
-        end
-        else
-        if C in cNumbers then
-        begin
-          CToken := tkInteger;
-          S := S + C;
-          while (Idx <= Len) and (Str[Idx] in cNumbers) do
-          begin
-            S := S + Str[Idx]; // ahuser: performance suicide
-            Inc(Idx);
-          end;
-          if ((Idx <= Len) and (Str[Idx] = ParseFormatSettings.DecimalSeparator)) then
-          begin
-            CToken := tkNumber;
-            Inc(Idx);
-            S := S + ParseFormatSettings.DecimalSeparator;
-            while (Idx <= Len) and (Str[Idx] in cNumbers) do
-            begin
-              S := S + Str[Idx]; // ahuser: performance suicide
-              Inc(Idx);
-            end;
-          end;
-        end
-        else
-        if C = ParseFormatSettings.DecimalSeparator then         // .55
-        begin
-          CToken := tkNumber;
-          S := S + C;
-          while (Idx <= Len) and (Str[Idx] in cNumbers) do
-          begin
-            S := S + Str[Idx]; // ahuser: performance suicide
-            Inc(Idx);
-          end;
-        end
-        else
-        if C in cLetters then
-        begin
-          CToken := tkIdentifier;
-          S := S + C;
-          while (Idx <= Len) and (Str[Idx] in cLettersAndNumbers) do
-          begin
-            S := S + Str[Idx]; // ahuser: performance suicide
-            Inc(Idx);
-          end;
+          S := S + Copy(Str, TokenStartIdx, Idx - TokenStartIdx);
+          Inc(Idx)
         end
         else
         begin
           CToken := tkError;
-          FErrorMessage := Format('Bad character ''%s''', [string(C)]);
+          FErrorMessage := 'No end of string found';
         end;
+      end
+      else if C in cNumbers then
+      begin
+        CToken := tkInteger;
+        TokenStartIdx := Idx;
+        FetchNumbers;
+
+        if (Idx <= Len) and (Str[Idx] = ParseFormatSettings.DecimalSeparator) then
+        begin
+          CToken := tkNumber;
+          Inc(Idx);
+          FetchNumbers;
+        end;
+
+        if Idx > TokenStartIdx then
+          S := S + C + Copy(Str, TokenStartIdx, Idx - TokenStartIdx)
+        else
+          S := S + C;
+      end
+      else if C = ParseFormatSettings.DecimalSeparator then         // .55
+      begin
+        CToken := tkNumber;
+        TokenStartIdx := Idx;
+        FetchNumbers;
+
+        if Idx > TokenStartIdx then
+          S := S + C + Copy(Str, TokenStartIdx, Idx - TokenStartIdx)
+        else
+          S := S + C;
+      end
+      else if C in cLetters then
+      begin
+        CToken := tkIdentifier;
+        TokenStartIdx := Idx;
+
+        while (Idx <= Len) and (Str[Idx] in cLettersAndNumbers) do
+          Inc(Idx);
+
+        if Idx > TokenStartIdx then
+          S := S + C + Copy(Str, TokenStartIdx, Idx - TokenStartIdx)
+        else
+          S := S + C;
+      end
+      else
+      begin
+        CToken := tkError;
+        FErrorMessage := Format('Bad character ''%s''', [string(C)]);
+      end;
     end;
 
     case CToken of
@@ -472,13 +478,15 @@ begin
       tkInteger,
       tkString:
       begin
-        if SameText(S, 'and') then
+        SLower := LowerCase(S);
+
+        if SLower = 'and' then
           Add(TLex.Create(tkOperator, '&', StartIdx))
-        else if SameText(S, 'or') then
+        else if SLower = 'or' then
           Add(TLex.Create(tkOperator, '|', StartIdx))
-        else if SameText(S, 'like') then
+        else if SLower = 'like' then
           Add(TLex.Create(tkOperator, '~', StartIdx))
-        else if SameText(S, 'not') then
+        else if SLower = 'not' then
           Add(TLex.Create(tkOperator, '!', StartIdx))
         else
           Add(TLex.Create(CToken, S, StartIdx));
@@ -515,11 +523,11 @@ function TParser.Parse: Boolean;
 begin
   FreeAndNil(FRoot);
   try
-    FRoot := Expr();
+    FRoot := Expr;
     if FScanIdx < FScan.Count - 1 then
     begin
       FreeAndNil(FRoot);
-      raise EParserError.Create('Unexpected ', LexC());
+      raise EParserError.Create('Unexpected ', LexC);
     end;
   except
     on E: Exception do
@@ -534,7 +542,7 @@ begin
   if FRoot <> nil then
   begin
     try
-      FValue := FRoot.Eval();
+      FValue := FRoot.Eval;
       Result := True;
     except
       on E: Exception do
@@ -571,15 +579,15 @@ var
 begin
   CNode := nil;
   try
-    CNode := Term();
-    Lex := LexC();
+    CNode := Term;
+    Lex := LexC;
 
     if Lex.Token = tkOperator then
     begin
       if Lex.Chr in ['+', '-'] then
       begin
-        LexAccept();
-        RightNode := Expr();
+        LexAccept;
+        RightNode := Expr;
         if RightNode = nil then
           raise EParserError.Create('Expression expected after', Lex);
         CNode := TNodeBin.Create(Self, Lex, CNode, RightNode);
@@ -605,15 +613,15 @@ var
 begin
   CNode := nil;
   try
-    CNode := Factor();
-    Lex := LexC();
+    CNode := Factor;
+    Lex := LexC;
 
     if Lex.Token = tkOperator then
     begin
       if Lex.Chr in ['*', '/', '=', '&', '|', '<', '>', '~'] then
       begin
-        LexAccept();
-        RightNode := Expr();
+        LexAccept;
+        RightNode := Expr;
         if RightNode = nil then
           raise EParserError.Create('Expression expected after', Lex);
         CNode := TNodeBin.Create(Self, Lex, CNode, RightNode);
@@ -640,62 +648,62 @@ var
 begin
   CNode := nil;
   try
-    Lex := LexC();
+    Lex := LexC;
     case Lex.token of
       tkLParen:
-        begin
-          LexAccept();
-          CNode := Expr();
-          if (LexC().Token = tkRParen) then
-            LexAccept()
-          else
-            raise EParserError.Create('Expected closing parenthesis instead of', LexC());
-        end;
+      begin
+        LexAccept;
+        CNode := Expr;
+        if (LexC.Token = tkRParen) then
+          LexAccept
+        else
+          raise EParserError.Create('Expected closing parenthesis instead of', LexC);
+      end;
       tkOperator:                       // unary minus
+      begin
+        if Lex.Chr in ['+', '-', '!'] then
         begin
-          if Lex.Chr in ['+', '-', '!'] then
-          begin
-            LexAccept();
-            CNode := TNodeUnary.Create(Self, Lex, Factor());
-          end
-          else
-            raise EParserError.Create('Unexpected ', Lex);
-        end;
+          LexAccept;
+          CNode := TNodeUnary.Create(Self, Lex, Factor);
+        end
+        else
+          raise EParserError.Create('Unexpected ', Lex);
+      end;
       tkNumber, tkInteger, tkString:
-        begin
-          CNode := TNodeCValue.Create(Self, Lex);
-          LexAccept();
-        end;
+      begin
+        CNode := TNodeCValue.Create(Self, Lex);
+        LexAccept;
+      end;
       tkIdentifier:
+      begin
+        if LexLook.Token = tkLParen then
         begin
-          if LexLook().Token = tkLParen then
+          // function call
+          LexAccept;
+          fNode := TNodeFunction.Create(Self, Lex);
+          LexAccept;
+          CNode := fNode;
+          if (LexC.Token <> tkRParen) then
           begin
-            // function call
-            LexAccept();
-            fNode := TNodeFunction.Create(Self, Lex);
-            LexAccept();
-            CNode := fNode;
-            if (LexC().token <> tkRParen) then
+            fNode.AddArg(Expr);
+            while LexC.Token = tkComa do
             begin
-              fNode.AddArg(Expr());
-              while LexC().Token = tkComa do
-              begin
-                LexAccept();
-                fNode.AddArg(Expr());
-              end;
+              LexAccept;
+              fNode.AddArg(Expr);
             end;
-
-            if (LexC().token = tkRParen) then
-              LexAccept()
-            else
-              raise EParserError.Create('Expected closing parenthesis instead of', LexC());
-          end
-          else
-          begin
-            CNode := TNodeVariable.Create(Self, Lex);
-            LexAccept();
           end;
+
+          if (LexC.Token = tkRParen) then
+            LexAccept
+          else
+            raise EParserError.Create('Expected closing parenthesis instead of', LexC);
+        end
+        else
+        begin
+          CNode := TNodeVariable.Create(Self, Lex);
+          LexAccept;
         end;
+      end;
       else
         raise EParserError.Create('Unexpected ', Lex);
     end;
@@ -746,12 +754,12 @@ var
     Result := (TVarData(AVal1).VType = varBoolean) or (TVarData(AVal2).VType = varBoolean);
     if Result then
     begin
-      if UpperCase(AVal1) = 'TRUE' then
+      if LowerCase(AVal1) = 'true' then
         AVal1 := 1
       else
         AVal1 := 0;
 
-      if UpperCase(AVal2) = 'TRUE' then
+      if LowerCase(AVal2) = 'true' then
         AVal2 := 1
       else
         AVal2 := 0;
@@ -770,7 +778,7 @@ var
 
   function FixupString(var aVal: Variant): Boolean;
   begin
-    Result:=((TVarData(aVal).VType = varString) {$IFDEF UNICODE}or (TVarData(aVal).VType = varUString){$ENDIF UNICODE}) and FParser.Parent.FCaseInsensitive;
+    Result:=((TVarData(aVal).VType = varString) or (TVarData(aVal).VType = varUString)) and FParser.Parent.FCaseInsensitive;
     if Result then
       aVal := AnsiUpperCase(aVal);
   end;
@@ -828,10 +836,8 @@ var
       Result := (LeftValue = Null) and (RightValue = Null)
     else
     begin
-      if FParser.Parent.FEnableWildcardMatching and (TVarData(LeftValue).VType<>varDate) then
-      begin
-        Result := EvalLike;
-      end
+      if FParser.Parent.FEnableWildcardMatching and (TVarData(LeftValue).VType <> varDate) then
+        Result := EvalLike
       else
         Result := LeftValue = RightValue;
     end;
@@ -898,17 +904,17 @@ begin
     '=':
     begin
       EvaluateLeftAndRightNode;
-      Result := EvalEquality();
+      Result := EvalEquality;
     end;
     '<':
     begin
       EvaluateLeftAndRightNode;
-      Result := EvalLT();
+      Result := EvalLT;
     end;
     '>':
     begin
       EvaluateLeftAndRightNode;
-      Result := EvalGT();
+      Result := EvalGT;
     end;
     '&':
     begin
@@ -922,7 +928,7 @@ begin
         begin
           LeftBool := LeftValue;
           if not LeftBool then
-            Result := FALSE
+            Result := False
           else
           begin
             RightBool := FRightNode.Eval;
@@ -946,7 +952,7 @@ begin
         begin
           LeftBool := LeftValue;
           if LeftBool then
-            Result := TRUE
+            Result := True
           else
           begin
             RightBool := FRightNode.Eval;
@@ -984,10 +990,10 @@ end;
 
 function TNodeUnary.Eval: Variant;
 begin
-  Result := FRightNode.Eval();
+  Result := FRightNode.Eval;
   if FOperator.Chr = '-' then
-    Result := -Result;
-  if FOperator.Chr = '!' then
+    Result := -Result
+  else if FOperator.Chr = '!' then
     Result := not Result;
 end;
 
@@ -1041,7 +1047,7 @@ var
 begin
   VArgs := VarArrayCreate([0, FArgs.Count - 1], varVariant);
   for I := 0 to FArgs.Count - 1 do
-    VArgs[I] := TNode(FArgs[I]).Eval();
+    VArgs[I] := TNode(FArgs[I]).Eval;
   Value := Null;
   if FParser.Parent.DoExecuteFunction(FFunc.Str, VArgs, Value) then
     Result := Value
@@ -1065,7 +1071,7 @@ begin
   if FParser.Parent.DoGetVariable(FLex.Str, Value) then
     Result := Value
   else
-    raise EParserError.Create('Variable ' + FLex.Str + ' could not be fetched.');
+    raise EParserError.CreateFmt('Variable %s could not be fetched.', [FLex.Str]);
 end;
 
 { EParserError }
@@ -1084,17 +1090,17 @@ begin
   inherited Destroy;
 end;
 
-function TExprParser.Eval(): Boolean;
+function TExprParser.Eval: Boolean;
 var
   Parser: TParser;
 begin
   FErrorMessage := '';
   {$IFDEF TESTING_PARSER}
   DebugText := '';
-  FScan.DebugPrint();
+  FScan.DebugPrint;
   {$ENDIF TESTING_PARSER}
   Parser := TParser(FParser);
-  if Parser.Execute() then
+  if Parser.Execute then
   begin
     FValue := Parser.Value;
     Result := True;
@@ -1109,7 +1115,7 @@ end;
 function TExprParser.Eval(const AExpression: string): Boolean;
 begin
   SetExpression(AExpression);
-  Result := Eval();
+  Result := Eval;
 end;
 
 procedure TExprParser.SetCaseInsensitive(const Value: Boolean);
@@ -1132,23 +1138,26 @@ begin
     else
     begin
       FParser.Scan := FScan;
-      FParser.Parse();
+      FParser.Parse;
     end;
   end;
 end;
 
 function TExprParser.DoGetVariable(const VarName: string; var Value: Variant): Boolean;
 begin
-  Result := False;
   if Assigned(FOnGetVariable) then
-    Result := FOnGetVariable(Self, VarName, Value);
+    Result := FOnGetVariable(Self, VarName, Value)
+  else
+    Result := False;
 end;
 
-function TExprParser.DoExecuteFunction(const FuncName: string; const Args: Variant; var ResVal: Variant): Boolean;
+function TExprParser.DoExecuteFunction(const FuncName: string; const Args: Variant;
+  var ResVal: Variant): Boolean;
 begin
-  Result := False;
   if Assigned(FOnExecuteFunction) then
-    Result := FOnExecuteFunction(Self, FuncName, Args, ResVal);
+    Result := FOnExecuteFunction(Self, FuncName, Args, ResVal)
+  else
+    Result := False;
 end;
 
 end.

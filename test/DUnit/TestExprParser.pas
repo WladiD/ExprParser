@@ -151,7 +151,7 @@ var
   VarInteger: Integer;
   VarBoolean: Boolean;
 begin
-  Result := TRUE;
+  Result := True;
   if HasStringVar(VarName, VarString) then
     Value := VarString
   else if HasIntegerVar(VarName, VarInteger) then
@@ -159,7 +159,7 @@ begin
   else if HasBooleanVar(VarName, VarBoolean) then
     Value := VarBoolean
   else
-    Result := FALSE;
+    Result := False;
 end;
 
 function TestTExprParser.ExprParserFunctionExecute(Sender: TObject; const FuncName: string;
@@ -306,6 +306,9 @@ begin
   VT := VarType(Execute('3.125'));
   Check(VT in [varSingle, varDouble]);
 
+  VT := VarType(Execute('.256   '));
+  Check(VT in [varSingle, varDouble]);
+
   VT := VarType(Execute('3'));
   Check(VT in [varInteger, varInt64]);
 
@@ -321,46 +324,46 @@ begin
   // Die Funktion Boolean wird hier als ein Stub gebraucht um die Anzahl der Aufrufe zählen zu können
   BindExprFunc('Boolean', BooleanCastExprFunc);
 
-  DefBooleanVar('A', FALSE);
-  DefBooleanVar('B', TRUE);
-  DefBooleanVar('C', TRUE);
+  DefBooleanVar('A', False);
+  DefBooleanVar('B', True);
+  DefBooleanVar('C', True);
 
-  ExprParser.FullBooleanEvaluation := TRUE;
-  CheckEquals(FALSE, Execute('Boolean(A) and Boolean(B) and Boolean(C)'));
+  ExprParser.FullBooleanEvaluation := True;
+  CheckEquals(False, Execute('Boolean(A) and Boolean(B) and Boolean(C)'));
   // Bei vollständiger boolscher Auswertung wird die Funktion "Boolean" genauso oft aufgerufen,
   // wie oft sie im Ausdruck vorkommt...also 3 mal
   CheckEquals(3, GetExprFuncCallCount('Boolean'));
   ResetExprFuncCallCount('Boolean');
 
-  ExprParser.FullBooleanEvaluation := FALSE;
-  CheckEquals(FALSE, Execute('Boolean(A) and Boolean(B) and Boolean(C)'));
+  ExprParser.FullBooleanEvaluation := False;
+  CheckEquals(False, Execute('Boolean(A) and Boolean(B) and Boolean(C)'));
   // Bei der Kurzschlussauswertung wird die Funktion "Boolean" hingegen nur einmal aufgerufen,
-  // da die Variable B FALSE ist und somit der gesamte Ausdruck schon korrekt evaluiert werden kann
+  // da die Variable B False ist und somit der gesamte Ausdruck schon korrekt evaluiert werden kann
   CheckEquals(1, GetExprFuncCallCount('Boolean'));
   ResetExprFuncCallCount('Boolean');
 
-  DefBooleanVar('A', TRUE);
-  DefBooleanVar('B', FALSE);
-  DefBooleanVar('C', FALSE);
+  DefBooleanVar('A', True);
+  DefBooleanVar('B', False);
+  DefBooleanVar('C', False);
 
-  CheckEquals(FALSE, Execute('Boolean(A) and Boolean(B) and Boolean(C)'));
-  // Da A nun TRUE ist, wird auf B getestet und erst dann abgebrochen...somit ergeben sich 2 Aufrufe
+  CheckEquals(False, Execute('Boolean(A) and Boolean(B) and Boolean(C)'));
+  // Da A nun True ist, wird auf B getestet und erst dann abgebrochen...somit ergeben sich 2 Aufrufe
   CheckEquals(2, GetExprFuncCallCount('Boolean'));
   ResetExprFuncCallCount('Boolean');
 
-  DefBooleanVar('A', TRUE);
-  DefBooleanVar('B', TRUE);
-  DefBooleanVar('C', FALSE);
+  DefBooleanVar('A', True);
+  DefBooleanVar('B', True);
+  DefBooleanVar('C', False);
 
-  CheckEquals(FALSE, Execute('Boolean(A) and Boolean(B) and Boolean(C)'));
+  CheckEquals(False, Execute('Boolean(A) and Boolean(B) and Boolean(C)'));
   CheckEquals(3, GetExprFuncCallCount('Boolean'));
   ResetExprFuncCallCount('Boolean');
 
-  DefBooleanVar('A', TRUE);
-  DefBooleanVar('B', TRUE);
-  DefBooleanVar('C', TRUE);
+  DefBooleanVar('A', True);
+  DefBooleanVar('B', True);
+  DefBooleanVar('C', True);
 
-  CheckEquals(TRUE, Execute('Boolean(A) and Boolean(B) and Boolean(C)'));
+  CheckEquals(True, Execute('Boolean(A) and Boolean(B) and Boolean(C)'));
   CheckEquals(3, GetExprFuncCallCount('Boolean'));
   ResetExprFuncCallCount('Boolean');
 end;
@@ -370,39 +373,39 @@ begin
   // Die Funktion Boolean wird hier als ein Stub gebraucht um die Anzahl der Aufrufe zählen zu können
   BindExprFunc('Boolean', BooleanCastExprFunc);
 
-  DefBooleanVar('A', TRUE);
-  DefBooleanVar('B', FALSE);
-  DefBooleanVar('C', FALSE);
+  DefBooleanVar('A', True);
+  DefBooleanVar('B', False);
+  DefBooleanVar('C', False);
 
-  ExprParser.FullBooleanEvaluation := TRUE;
-  CheckEquals(TRUE, Execute('Boolean(A) or Boolean(B) or Boolean(C)'));
+  ExprParser.FullBooleanEvaluation := True;
+  CheckEquals(True, Execute('Boolean(A) or Boolean(B) or Boolean(C)'));
   // Bei vollständiger boolscher Auswertung wird die Funktion "Boolean" genauso oft aufgerufen,
   // wie oft sie im Ausdruck vorkommt...also 3 mal
   CheckEquals(3, GetExprFuncCallCount('Boolean'));
   ResetExprFuncCallCount('Boolean');
 
-  ExprParser.FullBooleanEvaluation := FALSE;
-  CheckEquals(TRUE, Execute('Boolean(A) or Boolean(B) or Boolean(C)'));
+  ExprParser.FullBooleanEvaluation := False;
+  CheckEquals(True, Execute('Boolean(A) or Boolean(B) or Boolean(C)'));
   // Bei der Kurzschlussauswertung wird die Funktion "Boolean" hingegen nur einmal aufgerufen,
-  // da die Variable A TRUE ist und somit der gesamte Ausdruck schon korrekt evaluiert werden kann
+  // da die Variable A True ist und somit der gesamte Ausdruck schon korrekt evaluiert werden kann
   CheckEquals(1, GetExprFuncCallCount('Boolean'));
   ResetExprFuncCallCount('Boolean');
 
-  DefBooleanVar('A', FALSE);
-  DefBooleanVar('B', TRUE);
-  DefBooleanVar('C', FALSE);
+  DefBooleanVar('A', False);
+  DefBooleanVar('B', True);
+  DefBooleanVar('C', False);
 
-  CheckEquals(TRUE, Execute('Boolean(A) or Boolean(B) or Boolean(C)'));
-  // Da A nun FALSE ist wird auf B getestet und erst dann abgebrochen, dies ergibt aber schon 2 Aufrufe
+  CheckEquals(True, Execute('Boolean(A) or Boolean(B) or Boolean(C)'));
+  // Da A nun False ist wird auf B getestet und erst dann abgebrochen, dies ergibt aber schon 2 Aufrufe
   CheckEquals(2, GetExprFuncCallCount('Boolean'));
   ResetExprFuncCallCount('Boolean');
 
-  DefBooleanVar('A', FALSE);
-  DefBooleanVar('B', FALSE);
-  DefBooleanVar('C', FALSE);
+  DefBooleanVar('A', False);
+  DefBooleanVar('B', False);
+  DefBooleanVar('C', False);
 
-  CheckEquals(FALSE, Execute('Boolean(A) or Boolean(B) or Boolean(C)'));
-  // Auch die Kurzschlussauswertung muss komplett evaluieren, wenn alles FALSE ist
+  CheckEquals(False, Execute('Boolean(A) or Boolean(B) or Boolean(C)'));
+  // Auch die Kurzschlussauswertung muss komplett evaluieren, wenn alles False ist
   CheckEquals(3, GetExprFuncCallCount('Boolean'));
   ResetExprFuncCallCount('Boolean');
 end;
