@@ -398,7 +398,7 @@ begin
       '(': CToken := tkLParen;
       ')': CToken := tkRParen;
       ',': CToken := tkComa;
-      ' ', #09: ;
+      ' ', #09, #13, #10: { Do nothing };
     else
       if C in cOperators then
         CToken := tkOperator
