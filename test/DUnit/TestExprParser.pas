@@ -3,9 +3,13 @@ unit TestExprParser;
 interface
 
 uses
-  Classes, SysUtils, Variants,
+  System.Classes,
+  System.SysUtils,
+  System.Variants,
+
   TestFramework,
-  ExprParser;
+  ExprParser,
+  ExprParserTools;
 
 type
   TExprFuncMethod = function(const Args: Variant): Variant of object;
@@ -19,17 +23,11 @@ type
   TestTExprParser = class(TTestCase)
   private
     FExprParser: TExprParser;
-    FStringVars: TStringList;
-    FIntegerVars: TStringList;
-    FBooleanVars: TStringList;
+    FStringVars: TCachedVars<string>;
+    FIntegerVars: TCachedVars<Integer>;
+    FBooleanVars: TCachedVars<Boolean>;
     FExprFuncs: TExprFuncArray;
 
-    function HasVar(VarsContainer: TStringList; const VarName: string; out VarValue: string): Boolean; overload;
-    function HasStringVar(const VarName: string; out VarValue: string): Boolean;
-    function HasIntegerVar(const VarName: string; out VarValue: Integer): Boolean;
-    function HasBooleanVar(const VarName: string; out VarValue: Boolean): Boolean;
-
-    procedure DefVar(var VarsContainer: TStringList; const VarName, VarValue: string);
     procedure DefStringVar(const VarName, VarValue: string);
     procedure DefIntegerVar(const VarName: string; VarValue: Integer);
     procedure DefBooleanVar(const VarName: string; VarValue: Boolean);
@@ -67,99 +65,44 @@ type
     procedure NotOperator;
   end;
 
+  TestTCachedVars = class(TTestCase)
+  published
+    procedure StaticStringTest;
+    procedure DynStringTest;
+  end;
+
 implementation
 
 { TestTExprParser }
 
-function TestTExprParser.HasVar(VarsContainer: TStringList; const VarName: string;
-  out VarValue: string): Boolean;
-var
-  VarIndex: Integer;
-begin
-  Result := Assigned(VarsContainer);
-  if not Result then
-    Exit;
-
-  VarIndex := VarsContainer.IndexOfName(VarName);
-  Result := VarIndex >= 0;
-
-  if Result then
-    VarValue := VarsContainer.ValueFromIndex[VarIndex];
-end;
-
-function TestTExprParser.HasStringVar(const VarName: string; out VarValue: string): Boolean;
-begin
-  Result := HasVar(FStringVars, VarName, VarValue);
-end;
-
-function TestTExprParser.HasIntegerVar(const VarName: string; out VarValue: Integer): Boolean;
-var
-  VarValueString: string;
-begin
-  Result := HasVar(FIntegerVars, VarName, VarValueString) and TryStrToInt(VarValueString, VarValue);
-end;
-
-function TestTExprParser.HasBooleanVar(const VarName: string; out VarValue: Boolean): Boolean;
-var
-  VarValueString: string;
-  VarValueInteger: Integer;
-begin
-  Result := HasVar(FBooleanVars, VarName, VarValueString) and
-    TryStrToInt(VarValueString, VarValueInteger);
-
-  if Result then
-    VarValue := VarValueInteger = 1;
-end;
-
-procedure TestTExprParser.DefVar(var VarsContainer: TStringList; const VarName, VarValue: string);
-var
-  VarIndex: Integer;
-begin
-  if not Assigned(VarsContainer) then
-  begin
-    VarsContainer := TStringList.Create;
-    VarIndex := -1;
-  end
-  else
-    VarIndex := VarsContainer.IndexOfName(VarName);
-
-  if VarIndex < 0 then
-    VarsContainer.Add(VarName + VarsContainer.NameValueSeparator + VarValue)
-  else
-    VarsContainer[VarIndex] := VarName + VarsContainer.NameValueSeparator + VarValue;
-end;
-
 procedure TestTExprParser.DefStringVar(const VarName, VarValue: string);
 begin
-  DefVar(FStringVars, VarName, VarValue);
+  if not Assigned(FStringVars) then
+    FStringVars := TCachedVars<string>.Create(nil);
+  FStringVars.DefineVar(VarName, VarValue);
 end;
 
 procedure TestTExprParser.DefIntegerVar(const VarName: string; VarValue: Integer);
 begin
-  DefVar(FIntegerVars, VarName, IntToStr(VarValue));
+  if not Assigned(FIntegerVars) then
+    FIntegerVars := TCachedVars<Integer>.Create(nil);
+  FIntegerVars.DefineVar(VarName, VarValue);
 end;
 
 procedure TestTExprParser.DefBooleanVar(const VarName: string; VarValue: Boolean);
 begin
-  DefVar(FBooleanVars, VarName, IntToStr(Ord(VarValue)));
+  if not Assigned(FBooleanVars) then
+    FBooleanVars := TCachedVars<Boolean>.Create(nil);
+  FBooleanVars.DefineVar(VarName, VarValue);
 end;
 
 function TestTExprParser.ExprParserGetVariable(Sender: TObject; const VarName: string;
   var Value: Variant): Boolean;
-var
-  VarString: string;
-  VarInteger: Integer;
-  VarBoolean: Boolean;
 begin
-  Result := True;
-  if HasStringVar(VarName, VarString) then
-    Value := VarString
-  else if HasIntegerVar(VarName, VarInteger) then
-    Value := VarInteger
-  else if HasBooleanVar(VarName, VarBoolean) then
-    Value := VarBoolean
-  else
-    Result := False;
+  Result :=
+    FStringVars.Endpoint(Sender, VarName, Value) or
+    FIntegerVars.Endpoint(Sender, VarName, Value) or
+    FBooleanVars.Endpoint(Sender, VarName, Value);
 end;
 
 function TestTExprParser.ExprParserFunctionExecute(Sender: TObject; const FuncName: string;
@@ -469,8 +412,86 @@ begin
   Check(Execute('(not A) and (not B)'));
 end;
 
+{ TestTCachedVars }
+
+const
+  NameVarName = 'Name';
+  FirstNameVarName = 'FirstName';
+  NameExpected = 'Mustermann';
+  FirstNameExpected = 'Max';
+
+procedure TestTCachedVars.StaticStringTest;
+var
+  StringVars: TCachedVars<string>;
+  Name, FirstName, Dummy: string;
+  NameVariant, FirstNameVariant: Variant;
+begin
+  StringVars := TCachedVars<string>.Create(nil);
+  try
+    // Static vars
+    StringVars.DefineVar(NameVarName, NameExpected);
+    StringVars.DefineVar(FirstNameVarName, FirstNameExpected);
+
+    // Not existing vars
+    CheckFalse(StringVars.HasVar('A', Dummy));
+    CheckFalse(StringVars.HasVar('B', Dummy));
+    CheckFalse(StringVars.HasVar('AnyVarName', Dummy));
+
+    Check(StringVars.HasVar(NameVarName, Name));
+    Check(StringVars.HasVar(FirstNameVarName, FirstName));
+
+    CheckEquals(NameExpected, Name);
+    CheckEquals(FirstNameExpected, FirstName);
+
+    Check(StringVars.Endpoint(nil, NameVarName, NameVariant));
+    Check(StringVars.Endpoint(nil, FirstNameVarName, FirstNameVariant));
+
+    Check(Name = NameVariant);
+    Check(FirstName = FirstNameVariant);
+  finally
+    StringVars.Free;
+  end;
+end;
+
+procedure TestTCachedVars.DynStringTest;
+var
+  StringVars: TCachedVars<string>;
+  Name, FirstName: string;
+  NameVariant, FirstNameVariant: Variant;
+begin
+  StringVars := TCachedVars<string>.Create(
+    function(const VarName: string; out Value: string): Boolean
+    begin
+      Result := True;
+      if SameText(VarName, NameVarName) then
+        Value := NameExpected
+      else if SameText(VarName, FirstNameVarName) then
+        Value := FirstNameExpected
+      else
+        Result := False;
+    end);
+  try
+    // The vars are not determined yet, so they aren't exists
+    CheckFalse(StringVars.HasVar(NameVarName, Name));
+    CheckFalse(StringVars.HasVar(FirstNameVarName, FirstName));
+
+    // Here the VarGetter will be triggered, and so the var get cached
+    Check(StringVars.Endpoint(nil, NameVarName, NameVariant));
+    Check(StringVars.Endpoint(nil, FirstNameVarName, FirstNameVariant));
+
+    // Now the vars should exists
+    Check(StringVars.HasVar(NameVarName, Name));
+    Check(StringVars.HasVar(FirstNameVarName, FirstName));
+
+    CheckEquals(NameExpected, Name);
+    CheckEquals(FirstNameExpected, FirstName);
+  finally
+    StringVars.Free;
+  end;
+end;
+
 initialization
   // Alle Testfälle beim Test-Runner registrieren
-  RegisterTests('Unit: ExprParser',  [TestTExprParser.Suite]);
+  RegisterTests('Unit: ExprParser, ExprParserTools', [TestTExprParser.Suite, TestTCachedVars.Suite]);
 
 end.
