@@ -74,7 +74,7 @@ object MainForm: TMainForm
     Width = 250
     Height = 89
     Anchors = [akLeft, akBottom]
-    ScrollBars = ssHorizontal
+    ScrollBars = ssBoth
     TabOrder = 2
   end
   object Button1: TButton

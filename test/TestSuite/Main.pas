@@ -10,6 +10,7 @@ uses
   System.Classes,
   System.Actions,
   System.Contnrs,
+  System.Diagnostics,
   Vcl.Graphics,
   Vcl.Controls,
   Vcl.Forms,
@@ -38,6 +39,8 @@ type
     procedure ExecuteActionExecute(Sender: TObject);
   private
     FExprParser: TExprParser;
+    FVarAccessCounter: Integer;
+    FFuncAccessCounter: Integer;
 
     procedure DumpExecNodeTree(Strings: TStrings);
     function ExprParserGetVariable(Sender: TObject; const VarName: string;
@@ -163,16 +166,35 @@ begin
 end;
 
 procedure TMainForm.ExecuteActionExecute(Sender: TObject);
+var
+  Watcher: TStopwatch;
 begin
+  FVarAccessCounter := 0;
+  FFuncAccessCounter := 0;
+  Watcher := TStopwatch.StartNew;
+
   FExprParser.FullBooleanEvaluation := not ShortCircuitEvalCheckBox.Checked;
 
   if FExprParser.Eval(Trim(ExprMemo.Lines.Text)) then
   begin
-    ResultMemo.Color := clWindow;
+    Watcher.Stop;
 
-    ResultMemo.Lines.Clear;
-    ResultMemo.Lines.Add('Result: ' + string(FExprParser.Value));
-    ResultMemo.Lines.Add('Result type: ' + VarTypeAsText(VarType(FExprParser.Value)));
+    ResultMemo.Color := clWindow;
+    ResultMemo.Lines.BeginUpdate;
+    try
+      ResultMemo.Lines.Clear;
+      ResultMemo.Lines.Add('Result: ' + string(FExprParser.Value));
+      ResultMemo.Lines.Add('Result type: ' + VarTypeAsText(VarType(FExprParser.Value)));
+      ResultMemo.Lines.Add('---');
+      ResultMemo.Lines.Add(Format('Exec time: %d ticks (%s)',
+        [Watcher.ElapsedTicks, Watcher.Elapsed.ToString]));
+      ResultMemo.Lines.Add(Format('Var access: %d times', [FVarAccessCounter]));
+      ResultMemo.Lines.Add(Format('Function access: %d times', [FFuncAccessCounter]));
+      ResultMemo.SelStart := 0;
+      ResultMemo.SelLength := 0;
+    finally
+      ResultMemo.Lines.EndUpdate;
+    end;
 
     DumpExecNodeTree(ExecNodeTreeMemo.Lines);
   end
@@ -189,6 +211,7 @@ function TMainForm.ExprParserGetVariable(Sender: TObject; const VarName: string;
 var
   VarIndex: Integer;
 begin
+  Inc(FVarAccessCounter);
   VarIndex := VarMemo.Lines.IndexOfName(VarName);
   Result := VarIndex >= 0;
   if Result then
@@ -210,6 +233,7 @@ var
   end;
 
 begin
+  Inc(FFuncAccessCounter);
   LFN := LowerCase(FuncName);
   ArgHighBound := VarArrayHighBound(Args, 1);
 
